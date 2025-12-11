@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BOI Exemption Checker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+        }
+
+        /* Print Styles */
+        @media print {
+            body {
+                background-color: white;
+            }
+            .no-print {
+                display: none !important;
+            }
+            .print-only {
+                display: block !important;
+            }
+            .card {
+                box-shadow: none !important;
+                border: 1px solid #ddd !important;
+                width: 100% !important;
+                max-width: 100% !important;
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+            .print-header {
+                text-align: center;
+                margin-bottom: 2rem;
+                border-bottom: 2px solid #000;
+                padding-bottom: 1rem;
+            }
+            .result-container {
+                border: 2px solid #000;
+                padding: 2rem;
+                margin-top: 1rem;
+            }
+        }
+
+        .print-only {
+            display: none;
+        }
+
+        /* Custom Checkbox */
+        .custom-checkbox input:checked + div {
+            background-color: #2563eb;
+            border-color: #2563eb;
+        }
+        .custom-checkbox input:checked + div svg {
+            display: block;
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.3s ease-in-out;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center p-4 text-slate-800">
+
+    <!-- Header / Nav -->
+    <nav class="w-full max-w-2xl mb-8 flex items-center justify-between no-print">
+        <div class="flex items-center gap-2 text-blue-800">
+            <i class="fa-solid fa-scale-balanced text-2xl"></i>
+            <span class="font-bold text-xl tracking-tight">BOI Exempt Check</span>
+        </div>
+        <div class="text-sm text-slate-500">Access to Justice Tool</div>
+    </nav>
+
+    <!-- Main Card -->
+    <main class="w-full max-w-2xl bg-white rounded-2xl shadow-xl overflow-hidden card relative">
+        
+        <!-- Progress Bar -->
+        <div class="h-2 bg-slate-100 w-full no-print">
+            <div id="progressBar" class="h-full bg-blue-600 transition-all duration-500 ease-out" style="width: 0%"></div>
+        </div>
+
+        <div class="p-6 md:p-10 min-h-[400px] flex flex-col justify-center">
+            
+            <!-- Intro Screen -->
+            <div id="introScreen" class="fade-in text-center">
+                <div class="bg-blue-50 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <i class="fa-solid fa-file-shield text-3xl text-blue-600"></i>
+                </div>
+                <h1 class="text-2xl md:text-3xl font-bold mb-4 text-slate-900">BOI Exemption Checker</h1>
+                <p class="text-slate-600 mb-8 leading-relaxed max-w-md mx-auto">
+                    Determine if your small business is exempt from filing a Beneficial Ownership Information (BOI) report under the Corporate Transparency Act.
+                </p>
+                <button onclick="startWizard()" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-8 rounded-lg transition-colors shadow-lg hover:shadow-blue-500/30">
+                    Start Assessment
+                </button>
+            </div>
+
+            <!-- Question Container -->
+            <div id="questionContainer" class="hidden fade-in">
+                <div class="mb-2">
+                    <span class="text-xs font-bold text-blue-600 tracking-wider uppercase">Question <span id="stepNumber">1</span> of 7</span>
+                </div>
+                <h2 id="questionTitle" class="text-xl md:text-2xl font-bold mb-3 text-slate-900"></h2>
+                <p id="questionDesc" class="text-slate-500 mb-8 text-sm md:text-base"></p>
+
+                <!-- Dynamic Content Area -->
+                <div id="dynamicContent" class="mb-8"></div>
+
+                <!-- Navigation Buttons -->
+                <div class="flex flex-col-reverse md:flex-row gap-3 pt-4 border-t border-slate-100">
+                    <button onclick="handleBack()" id="backBtn" class="px-6 py-2.5 rounded-lg text-slate-500 hover:bg-slate-50 hover:text-slate-700 font-medium transition-colors">
+                        Back
+                    </button>
+                    <div class="flex-1"></div>
+                    <div id="actionButtons" class="flex gap-3 w-full md:w-auto">
+                        <!-- Buttons injected via JS -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Result: Exempt -->
+            <div id="resultExempt" class="hidden fade-in text-center">
+                
+                <!-- Print Header (Hidden on Screen) -->
+                <div class="print-only print-header">
+                    <h1 class="text-2xl font-bold">Compliance Determination Record</h1>
+                    <p class="text-sm text-gray-600">Generated on <span class="date-placeholder"></span></p>
+                </div>
+
+                <div class="no-print bg-green-50 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <i class="fa-solid fa-check text-4xl text-green-600"></i>
+                </div>
+
+                <h2 class="text-2xl md:text-3xl font-bold mb-4 text-slate-900">You are likely Exempt</h2>
+                
+                <div class="result-container bg-green-50 rounded-xl p-6 mb-8 text-left border border-green-100">
+                    <p class="font-semibold text-green-900 mb-2">Exemption Category:</p>
+                    <p id="exemptReason" class="text-lg text-green-800 font-bold mb-4"></p>
+                    <p class="text-green-700 text-sm leading-relaxed">
+                        Based on your answers, your entity appears to meet the criteria for an exemption from BOI reporting requirements under the Corporate Transparency Act.
+                    </p>
+                </div>
+
+                <div class="flex flex-col gap-3 no-print">
+                    <button onclick="window.print()" class="bg-slate-900 hover:bg-slate-800 text-white font-semibold py-3 px-6 rounded-lg transition-colors flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-print"></i> Save/Print Record
+                    </button>
+                    <button onclick="location.reload()" class="text-slate-500 hover:text-slate-700 font-medium py-2">
+                        Start Over
+                    </button>
+                </div>
+
+                <!-- Print Footer -->
+                <div class="print-only mt-8 text-xs text-gray-500 text-left">
+                    <p><strong>Disclaimer:</strong> This document is a self-generated record based on user inputs. It does not constitute legal advice. The user assumes full responsibility for the accuracy of the information provided and the determination of exemption status.</p>
+                </div>
+            </div>
+
+            <!-- Result: Required -->
+            <div id="resultRequired" class="hidden fade-in text-center">
+                 <!-- Print Header (Hidden on Screen) -->
+                 <div class="print-only print-header">
+                    <h1 class="text-2xl font-bold">Compliance Determination Record</h1>
+                    <p class="text-sm text-gray-600">Generated on <span class="date-placeholder"></span></p>
+                </div>
+
+                <div class="no-print bg-amber-50 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <i class="fa-solid fa-file-circle-exclamation text-3xl text-amber-600"></i>
+                </div>
+
+                <h2 class="text-2xl md:text-3xl font-bold mb-4 text-slate-900">Filing Required</h2>
+                
+                <div class="result-container bg-amber-50 rounded-xl p-6 mb-8 text-left border border-amber-100">
+                    <p class="text-amber-900 font-semibold mb-2">Determination:</p>
+                    <p class="text-lg text-amber-800 font-bold mb-4">No Exemption Found</p>
+                    <p class="text-amber-800 text-sm leading-relaxed">
+                        Based on your answers, your entity does not appear to meet any of the 23 standard exemptions. You are likely required to file a BOI report with FinCEN.
+                    </p>
+                </div>
+
+                <div class="flex flex-col gap-3 no-print">
+                    <button onclick="window.print()" class="bg-slate-900 hover:bg-slate-800 text-white font-semibold py-3 px-6 rounded-lg transition-colors flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-print"></i> Save/Print Record
+                    </button>
+                    <button onclick="location.reload()" class="text-slate-500 hover:text-slate-700 font-medium py-2">
+                        Start Over
+                    </button>
+                </div>
+
+                 <!-- Print Footer -->
+                 <div class="print-only mt-8 text-xs text-gray-500 text-left">
+                    <p><strong>Disclaimer:</strong> This document is a self-generated record based on user inputs. It does not constitute legal advice. The user assumes full responsibility for the accuracy of the information provided.</p>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="mt-8 text-center text-slate-400 text-xs max-w-lg mx-auto no-print px-4">
+        <p class="mb-2">Not legal advice. For informational purposes only.</p>
+        <p>&copy; 2024 BOI Exemption Checker. All rights reserved.</p>
+    </footer>
+
+    <script>
+        // --- State Management ---
+        const state = {
+            step: 0,
+            history: [], // tracks path for back button
+            answers: {}
+        };
+
+        // --- Configuration ---
+        const steps = [
+            {
+                id: 'large_operating',
+                title: "Large Operating Company",
+                description: "Do you meet the criteria for the 'Large Operating Company' exemption (Exemption #21)?",
+                type: 'complex_checkbox',
+                items: [
+                    "More than 20 full-time US employees",
+                    "Physical office presence in the US",
+                    "More than $5M in gross receipts/sales on last tax return"
+                ],
+                successReason: "Large Operating Company (Exemption #21)"
+            },
+            {
+                id: 'financial',
+                title: "Regulated Financial Institutions",
+                description: "Are you a Bank, Credit Union, Insurance Company, Broker-Dealer, or Registered Money Services Business?",
+                type: 'yes_no',
+                successReason: "Regulated Financial Institution (Exemptions #3-14, 17-18)"
+            },
+            {
+                id: 'public_gov',
+                title: "Public or Government Entity",
+                description: "Are you a Publicly Traded company (SEC reporting) or a Government Authority?",
+                type: 'yes_no',
+                successReason: "Public/Government Entity (Exemptions #1, 2, 5, 6)"
+            },
+            {
+                id: 'utility_accounting',
+                title: "Utilities & Accounting",
+                description: "Are you a Public Utility or a Registered Public Accounting Firm?",
+                type: 'yes_no',
+                successReason: "Utility or Accounting Firm (Exemptions #15, 16)"
+            },
+            {
+                id: 'tax_exempt',
+                title: "Tax Exempt Entity",
+                description: "Are you a 501(c) Non-Profit or Tax-Exempt entity?",
+                type: 'yes_no',
+                successReason: "Tax Exempt Entity (Exemption #19)"
+            },
+            {
+                id: 'subsidiary',
+                title: "Subsidiary",
+                description: "Is your entity fully owned or controlled by an exempt entity (like a Bank or Large Operating Company)?",
+                type: 'yes_no',
+                successReason: "Subsidiary of Exempt Entity (Exemption #22)"
+            },
+            {
+                id: 'inactive',
+                title: "Inactive Entity",
+                description: "Do you meet the criteria for the 'Inactive Entity' exemption (Exemption #23)?",
+                type: 'complex_checkbox',
+                items: [
+                    "Established before Jan 1, 2020",
+                    "Not engaged in active business",
+                    "No foreign owners",
+                    "No ownership change in last 12 months",
+                    "No funds >$1,000 sent/received in last 12 months",
+                    "No assets of any kind"
+                ],
+                successReason: "Inactive Entity (Exemption #23)"
+            }
+        ];
+
+        // --- UI Controllers ---
+
+        function startWizard() {
+            document.getElementById('introScreen').classList.add('hidden');
+            document.getElementById('questionContainer').classList.remove('hidden');
+            renderStep(0);
+        }
+
+        function renderStep(index) {
+            state.step = index;
+            const currentConfig = steps[index];
+            const totalSteps = steps.length;
+            
+            // Update Progress
+            const progress = ((index) / totalSteps) * 100;
+            document.getElementById('progressBar').style.width = `${progress}%`;
+            document.getElementById('stepNumber').innerText = index + 1;
+            
+            // Update Text
+            document.getElementById('questionTitle').innerText = currentConfig.title;
+            document.getElementById('questionDesc').innerText = currentConfig.description;
+
+            // Render Content based on type
+            const contentDiv = document.getElementById('dynamicContent');
+            const actionDiv = document.getElementById('actionButtons');
+            contentDiv.innerHTML = '';
+            actionDiv.innerHTML = '';
+
+            if (currentConfig.type === 'yes_no') {
+                renderYesNo(actionDiv);
+            } else if (currentConfig.type === 'complex_checkbox') {
+                renderCheckboxes(contentDiv, currentConfig.items, actionDiv);
+            }
+
+            // Handle Back Button visibility
+            const backBtn = document.getElementById('backBtn');
+            backBtn.style.visibility = index === 0 ? 'hidden' : 'visible';
+        }
+
+        function renderYesNo(container) {
+            container.innerHTML = `
+                <button onclick="handleAnswer('no')" class="w-full md:w-auto px-6 py-3 rounded-lg border-2 border-slate-200 text-slate-700 font-semibold hover:border-slate-300 hover:bg-slate-50 transition-all">
+                    No
+                </button>
+                <button onclick="handleAnswer('yes')" class="w-full md:w-auto px-6 py-3 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 shadow-md transition-all">
+                    Yes
+                </button>
+            `;
+        }
+
+        function renderCheckboxes(contentContainer, items, actionContainer) {
+            // Render Items
+            let html = '<div class="space-y-3">';
+            items.forEach((item, idx) => {
+                html += `
+                    <label class="custom-checkbox flex items-start gap-3 p-3 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50 transition-colors">
+                        <div class="relative flex items-center">
+                            <input type="checkbox" class="peer sr-only" onchange="checkCheckboxValidity()" id="chk-${idx}">
+                            <div class="w-5 h-5 border-2 border-slate-300 rounded bg-white transition-colors flex items-center justify-center">
+                                <svg class="w-3 h-3 text-white hidden pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
+                            </div>
+                        </div>
+                        <span class="text-sm text-slate-700 select-none pt-0.5">${item}</span>
+                    </label>
+                `;
+            });
+            html += '</div>';
+            contentContainer.innerHTML = html;
+
+            // Render Button (Disabled initially)
+            actionContainer.innerHTML = `
+                <button onclick="handleAnswer('no')" class="w-full md:w-auto px-6 py-3 rounded-lg border-2 border-slate-200 text-slate-700 font-semibold hover:border-slate-300 hover:bg-slate-50 transition-all order-1">
+                    None of the above / Not All
+                </button>
+                <button id="complexNextBtn" onclick="handleAnswer('yes')" class="hidden w-full md:w-auto px-6 py-3 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 shadow-md transition-all order-2">
+                    I meet ALL criteria
+                </button>
+            `;
+        }
+
+        function checkCheckboxValidity() {
+            const currentConfig = steps[state.step];
+            const checkboxes = document.querySelectorAll('#dynamicContent input[type="checkbox"]');
+            const checkedCount = Array.from(checkboxes).filter(cb => cb.checked).length;
+            const allChecked = checkedCount === currentConfig.items.length;
+
+            const nextBtn = document.getElementById('complexNextBtn');
+            if (allChecked) {
+                nextBtn.classList.remove('hidden');
+                nextBtn.classList.add('inline-block');
+            } else {
+                nextBtn.classList.add('hidden');
+                nextBtn.classList.remove('inline-block');
+            }
+        }
+
+        // --- Logic Engine ---
+
+        function handleAnswer(answer) {
+            const currentConfig = steps[state.step];
+            
+            if (answer === 'yes') {
+                showResult('exempt', currentConfig.successReason);
+            } else {
+                nextStep();
+            }
+        }
+
+        function nextStep() {
+            const nextIndex = state.step + 1;
+            if (nextIndex < steps.length) {
+                renderStep(nextIndex);
+            } else {
+                showResult('required');
+            }
+        }
+
+        function handleBack() {
+            if (state.step > 0) {
+                renderStep(state.step - 1);
+            }
+        }
+
+        function showResult(type, reason = '') {
+            document.getElementById('questionContainer').classList.add('hidden');
+            document.getElementById('progressBar').parentElement.classList.add('hidden'); // Hide progress bar on result
+            
+            // Set Date
+            const now = new Date().toLocaleString();
+            document.querySelectorAll('.date-placeholder').forEach(el => el.innerText = now);
+
+            if (type === 'exempt') {
+                document.getElementById('resultExempt').classList.remove('hidden');
+                document.getElementById('exemptReason').innerText = reason;
+            } else {
+                document.getElementById('resultRequired').classList.remove('hidden');
+            }
+        }
+
+    </script>
+</body>
+</html>
